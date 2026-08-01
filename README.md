@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Personal Book Manager
 
-## Getting Started
+A full-stack app to track your personal reading — built with the MERN stack and Next.js as part of the Thumbstack MERN Stack Developer assignment.
 
-First, run the development server:
+You can sign up, log in, and keep a private collection of books, marking each one as want-to-read, reading, or completed.
+
+## Features
+
+- JWT-based auth (signup, login, logout) with access + refresh tokens
+- Add, edit, and delete books — title, author, tags, and reading status
+- Filter by status or tag, search by title/author
+- Dashboard with basic stats (total books, currently reading, completed)
+- Dark mode toggle
+- Toast notifications, custom confirm modals, skeleton loading states
+- Protected routes — you get redirected to login if you're not authenticated
+
+## Tech Stack
+
+- Frontend: Next.js (App Router), React, Tailwind CSS
+- Backend: Next.js API routes
+- Database: MongoDB + Mongoose
+- Auth: JWT (access + refresh tokens), httpOnly cookies, bcrypt for password hashing
+
+## Auth flow
+
+I went with a dual-token setup instead of one long-lived token, mainly for security.
+
+- Access token — short-lived (15 min), used for actual requests
+- Refresh token — longer-lived (7 days), only used to get a new access token when the old one expires
+
+Both are kept in httpOnly cookies so client-side JS can't read them (helps against XSS). When the access token expires, the frontend automatically calls the refresh endpoint in the background, so the user doesn't get logged out mid-session.
+
+## Project structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── auth/          -> signup, login, logout, refresh
+│   │   └── books/         -> CRUD routes for books
+│   ├── dashboard/page.js
+│   ├── login/page.js
+│   ├── signup/page.js
+│   └── page.js            -> redirects to /login or /dashboard
+├── lib/
+│   ├── db.js               -> MongoDB connection
+│   ├── auth.js              -> JWT helper functions
+│   └── apiClient.js         -> fetch wrapper that auto-refreshes tokens
+├── models/
+│   ├── User.js
+│   └── Book.js
+└── proxy.js                 -> route protection (Next.js 16)
+```
+
+## Database schema
+
+**User** — name, email (unique), password (bcrypt hash)
+
+**Book** — title, author, tags (array), status (want-to-read / reading / completed), userId (references the owning user)
+
+Every book query is scoped by userId, so users only ever see their own books.
+
+## Running it locally
+
+Prerequisites: Node 18+, a MongoDB connection (local or Atlas free tier)
+
+```bash
+git clone https://github.com/akshita141105/personal-book-manager.git
+cd personal-book-manager
+npm install
+```
+
+Copy `.env.example` to `.env.local` and fill in your own values:
+
+```
+MONGODB_URI=your_mongodb_connection_string
+JWT_ACCESS_SECRET=your_access_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+```
+
+Then run:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Go to http://localhost:3000 — it should redirect you to the login page.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Deployed on Vercel with MongoDB Atlas.
 
-## Learn More
+- Live URL: [add after deploying]
+- GitHub Repo: https://github.com/akshita141105/personal-book-manager
 
-To learn more about Next.js, take a look at the following resources:
+Same three env variables need to be added in the Vercel project settings.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## A few notes on decisions I made
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Status values are stored as plain strings in the DB (want-to-read, reading, completed) — the emoji/labels only get added at the UI layer, so data and display stay separate.
 
-## Deploy on Vercel
+Route protection is two layers: a quick cookie-presence check in `proxy.js` at the edge, and full JWT verification inside each API route. Edge runtime doesn't reliably support full JWT verification, so the actual security check happens at the API level.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Tried to keep the UI simple — just the stats that matter, consistent spacing, nothing too decorative.
