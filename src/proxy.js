@@ -7,19 +7,23 @@ export function proxy(request) {
 
     const isAuthenticated = accessToken || refreshToken;
 
-    // Agar user logged out hai aur dashboard access kar raha hai -> login bhejo
+    let response;
+
     if (pathname.startsWith("/dashboard") && !isAuthenticated) {
-        return NextResponse.redirect(new URL("/login", request.url));
+        response = NextResponse.redirect(new URL("/login", request.url));
+    }
+    else if ((pathname === "/login" || pathname === "/signup") && isAuthenticated) {
+        response = NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    else {
+        response = NextResponse.next();
     }
 
-    // Agar user already logged in hai aur login/signup pe ja raha hai -> dashboard bhejo
-    if ((pathname === "/login" || pathname === "/signup") && isAuthenticated) {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
+    response.headers.set("Cache-Control", "no-store, must-revalidate");
 
-    return NextResponse.next();
+    return response;
 }
 
 export const config = {
     matcher: ["/dashboard/:path*", "/login", "/signup"],
-};    
+};
